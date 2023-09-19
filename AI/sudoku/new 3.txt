@@ -1,0 +1,216 @@
+import numpy as np
+
+
+def sudoku_solver(sudoku):
+    solved_sudoku=[]
+    allPossibleVals = []
+    emptyPos=[]
+    ### Checking if the array is valid
+    for x in range (0,9):
+        for y in range (0,9):
+            if sudoku[x,y]!=0:
+                if is_valid(sudoku,x,y) == False:
+                    solved_sudoku = np.zeros((9,9))-1
+                    return solved_sudoku
+            else:
+                emptyPos.append([x,y])
+    
+    invalid,allPossibleVals=update_all_possible(sudoku,emptyPos)###########check if solved sudoku is empty after each run
+    
+    
+    changed=True
+    uChange=True
+    #while invalid == False:
+    rowdel=[[],[],[],[],[],[],[],[],[]]
+    coldel=[[],[],[],[],[],[],[],[],[]]
+
+    while changed==True and invalid==False:
+        invalid,allPossibleVals=update_all_possible(sudoku,emptyPos)
+        changed,sudoku,emptyPos=set_all_singles(sudoku,emptyPos,allPossibleVals)
+    
+    if invalid==True:
+        solved_sudoku = np.zeros((9,9))-1
+        return solved_sudoku
+    ##have a checker if goal to bypass this
+    while uChange==True and invalid==False:
+        invalid,allPossibleVals=update_all_possible(sudoku,emptyPos,rowdel,coldel)
+        sudoku,uChange,rowdel,coldel=uniqueCandidate(sudoku,emptyPos,allPossibleVals,rowdel,coldel)
+        emptyPos=UpdateEmpties(sudoku)
+    print(changed,"   ",invalid)
+    print(emptyPos)
+    print(allPossibleVals)
+    if invalid==True:
+        solved_sudoku = np.zeros((9,9))-1
+        return solved_sudoku
+    
+
+    solved_sudoku=sudoku
+    return solved_sudoku
+
+##aSudoku named so it doesnt mess with global variable
+##bSudoku created as a copy
+def is_valid(aSudoku,x,y,valCheck=0,rowdel=[],coldel=[]):
+    rowdel=[]
+    coldel=[]
+
+    bSudoku=aSudoku.copy()
+    if valCheck == 0:
+        sval=bSudoku[x,y]
+    elif valCheck > 0:
+        sval=valCheck
+    row = bSudoku[x,:]
+    row[y]=-10
+    column = bSudoku[:,y]
+    column[x]=-10
+
+    sx=x - x%3
+    sy=y - y%3
+    square = bSudoku[ sx:sx+3 , sy:sy+3]
+    square[x%3,y%3]=-10
+
+    if sval in row or sval in column or sval in square:
+        return False
+    if len(rowdel)>0:
+        for dels in rowdel[x]:
+            if sval == dels[0] and [x,y] not in dels[1]:
+                return False
+    if len(coldel)>0:
+        for dels in coldel[x]:
+            if sval == dels[0] and [x,y] not in dels[1]:
+                return False
+    return True
+
+def possible_vals(sudoku,x,y,rowdel=[],coldel=[]):
+    positionPossible =[]
+    for checkval in range(1,10):
+        if is_valid(sudoku,x,y,checkval,rowdel,coldel):
+            positionPossible.append(checkval)########## TURN INTO PRIORITY QUEUE
+    invalid=False
+    if len(positionPossible)==0:
+        invalid=True
+            
+    return invalid,positionPossible
+
+
+def update_all_possible(sudoku,vacant,rowdel=[],coldel=[]):
+
+    mapPossible = []
+    invalid=False
+    for position in vacant:
+        xPos=int(position[0])
+        yPos=int(position[1])
+        invalid,newlist=possible_vals(sudoku,xPos,yPos,rowdel,coldel)
+        if invalid:
+            return invalid,mapPossible
+        mapPossible.append(newlist)
+    return invalid,mapPossible
+
+def set_all_singles(sudoku,emptyPos,allPossibleVals):
+    x=0
+    y=0
+    found=False
+    emptyPoscopy=emptyPos.copy()
+    for Vals in allPossibleVals:
+        if len(Vals) == 1:
+            sudoku[emptyPos[x][0],emptyPos[x][1]]=Vals[0]
+            emptyPoscopy.pop(y)
+            found=True
+        else:
+            y=y+1
+        x=x+1
+    return found,sudoku,emptyPoscopy
+
+def uniqueCandidate(sudoku,emptyPos,allPossibleVals,rowdel,coldel):
+    allSquares=[[],[],[],[],[],[],[],[],[]]
+    sortedPos=[[],[],[],[],[],[],[],[],[]]
+
+    b=False
+    b=0
+    sudokug=sudoku.copy()
+    for x,y in emptyPos:
+        allSquares[y-y%3+x//3].append(allPossibleVals[b].copy())
+        sortedPos[y-y%3+x//3].append([x,y])
+        b=b+1
+    for k in range(0,9):
+        if len(allSquares[k]) != 0:
+            for j in range(0,9):
+                eSet=[]
+                for u in range(0,len(allSquares[k])):
+                    if j in allSquares[k][u]:
+                        eSet.append(sortedPos[k][u])
+                if len(eSet)==1:##only 1 coordinate
+                    sudokug[eSet[0][0],eSet[0][1]]=j
+                    b=True
+                    print("I changed something yoooo")
+                elif len(eSet)==3:
+                    if eSet[0][0] == eSet[1][0] and eSet[1][0] == eSet[2][0]:
+                        if [j,eSet] not in rowdel[eSet[0][0]]:
+                            rowdel[eSet[0][0]].append([j,eSet])
+                            b=True
+                    if eSet[0][1] == eSet[1][1] and eSet[1][1] == eSet[2][1]:
+                        if [j,eSet] not in coldel[eSet[0][1]]:
+                            coldel[eSet[0][1]].append([j,eSet])
+                            b=True
+                elif len(eSet) == 2:
+                    if eSet[0][0] == eSet[1][0]:
+                        if [j,eSet] not in rowdel[eSet[0][0]]:
+                            rowdel[eSet[0][0]].append([j,eSet])
+                            b=True
+                    if eSet[0][1] == eSet[1][1]:
+                        if [j,eSet] not in coldel[eSet[0][1]]:
+                            coldel[eSet[0][1]].append([j,eSet])
+                            b=True
+
+                    
+
+                    ####set value singular --- set a double for constraint checker
+    return sudokug,b,rowdel,coldel
+
+
+
+    ### use this to iteratevly find if a number in a square exclusively belongs to itself
+
+def UpdateEmpties(sudoku):
+    emptyPos=[]
+    for q in range(0,9):
+        for w in range(0,9):
+            if sudoku[q,w]==0:
+                emptyPos.append([q,w])
+    return emptyPos
+
+def pairFinder():##double unique
+    pass### gonna use this to find when two numbers only have the same two possible positions
+def possiblevalsafterpairs():
+    pass##using the pairs find the remaining possible values
+
+############# keep setting all the singular values then updating all possible and seeting again until there are no singulars left
+############# after do the same for all unique values
+############# redo for all single values
+print("Start")
+sudoku = np.array([[1,7,4,3,8,2,9,5,6],[2,9,5,4,6,7,1,3,8],[3,8,6,9,5,1,4,7,2],[4,6,1,5,2,3,8,9,7],[7,3,8,1,4,9,6,2,5],[9, 5, 2, 8, 7, 6, 3, 1, 4],[5, 2, 9, 6, 3, 4, 7, 8, 1],[6, 1, 7, 2, 9, 8, 5, 4, 3],[8, 4, 3, 7, 1, 5, 2, 6, 9]])
+sudoku=np.array([\
+ [0, 2, 0, 0, 0, 6, 9, 0, 0],\
+ [0, 0, 0, 0, 5, 0, 0, 2, 0],\
+ [6, 0, 0, 3, 0, 0, 0, 0, 0],\
+ [9, 4, 0, 0, 0, 7, 0, 0, 0],\
+ [0, 0, 0, 4, 0, 0, 7, 0, 0],\
+ [0, 3, 0, 2, 0, 0, 0, 8, 0],\
+ [0, 0, 9, 0, 4, 0, 0, 0, 0],\
+ [3, 0, 0, 9, 0, 2, 0, 1, 7],\
+ [0, 0, 8, 0, 0, 0, 0, 0, 2]])
+
+print(sudoku_solver(sudoku))
+print()
+print(sudoku)
+print()
+print("[[4. 2. 5. 8. 1. 6. 9. 7. 3.]")
+print("[8. 9. 3. 7. 5. 4. 6. 2. 1.]")
+print("[6. 1. 7. 3. 2. 9. 5. 4. 8.]")
+print("[9. 4. 1. 6. 8. 7. 2. 3. 5.]")
+print("[5. 8. 2. 4. 3. 1. 7. 6. 9.]")
+print("[7. 3. 6. 2. 9. 5. 1. 8. 4.]")
+print("[2. 7. 9. 1. 4. 8. 3. 5. 6.]")
+print("[3. 5. 4. 9. 6. 2. 8. 1. 7.]")
+print("[1. 6. 8. 5. 7. 3. 4. 9. 2.]]")
+
+
