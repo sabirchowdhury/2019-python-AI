@@ -1,11 +1,4 @@
-###################################################################################################
-# Filename: Sudoku Solver
-# Author: Elias Abou Farhat 199246766
-# Description: This File is the implementation of a sudoku solver using backtracking and constrains
-#              This main function is sudoku_solver it takes as an input a 9*9 Nympy array representing
-#              the initial state of the sudoku and output the solved sudoku or a 9*9 matrix of -1 if a 
-#              solution does not exists
-###################################################################################################
+
 import numpy as np
 import math as math
 import random as rand
